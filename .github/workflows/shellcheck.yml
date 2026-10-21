@@ -1,0 +1,20 @@
+name: shellcheck
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # every file with a shell shebang, including s6's `with-contenv sh|bash`
+      - run: |
+          mapfile -t files < <(grep -rlE --exclude-dir=.git '^#!.*\b(ba)?sh\b' .)
+          printf '%s\n' "${files[@]}"
+          docker run --rm -v "$PWD:/mnt:ro" -w /mnt docker.io/koalaman/shellcheck:v0.10.0 "${files[@]}"

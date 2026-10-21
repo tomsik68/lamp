@@ -19,6 +19,7 @@ echo 'php=' . PHP_VERSION . ' db=' . $db->query('SELECT VERSION()')->fetch_row()
 PHP
 chmod 644 "$web/index.php"
 
+# shellcheck disable=SC2086 # RUN_FLAGS is meant to split into several flags
 $DOCKER run -d $RUN_FLAGS --name "$name" -p 127.0.0.1::80 -v "$web:/var/www/html:ro,z" "$IMAGE" >/dev/null
 port=$($DOCKER port "$name" 80 | head -n1 | sed 's/.*://')
 
