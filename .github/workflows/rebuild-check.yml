@@ -1,0 +1,49 @@
+name: rebuild-check
+
+# Daily: rebuild a branch only when something changed, so digests move
+# only when content does.
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      versions: ${{ steps.check.outputs.versions }}
+    steps:
+      - id: check
+        run: |
+          stale=()
+          for php in 8.4 8.5; do
+            base="php:$php-apache-trixie"
+            ours="tomsik68/lamp:$php"
+            # the base moved if its top layer is no longer one of ours
+            base_top=$(docker buildx imagetools inspect "$base" --format '{{json .Image}}' \
+              | jq -r '."linux/amd64".rootfs.diff_ids[-1]')
+            if ! docker buildx imagetools inspect "$ours" --format '{{json .Image}}' \
+                | jq -e --arg l "$base_top" '."linux/amd64".rootfs.diff_ids | index($l)' >/dev/null; then
+              echo "$php: base image $base changed"
+              stale+=("$php"); continue
+            fi
+            upgradable=$(docker run --rm --entrypoint sh "$ours" -c \
+              'apt-get update -qq >/dev/null && apt list --upgradable 2>/dev/null | grep -c "upgradable from" || true')
+            if [ "$upgradable" -gt 0 ]; then
+              echo "$php: $upgradable Debian packages upgradable"
+              stale+=("$php")
+            fi
+          done
+          echo "versions=$(printf '%s\n' "${stale[@]}" | jq -R . | jq -cs 'map(select(. != ""))')" >> "$GITHUB_OUTPUT"
+
+  rebuild:
+    needs: check
+    if: needs.check.outputs.versions != '[]'
+    uses: ./.github/workflows/build.yml
+    with:
+      versions: ${{ needs.check.outputs.versions }}
+    secrets: inherit

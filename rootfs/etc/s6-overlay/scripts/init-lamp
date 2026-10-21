@@ -1,0 +1,118 @@
+#!/command/with-contenv bash
+# One-shot setup that runs before MariaDB and Apache start.
+set -euo pipefail
+
+MIGRATION_GUIDE=https://github.com/tomsik68/lamp/blob/main/docs/migrating-from-xampp.md
+DATADIR=/var/lib/mysql
+
+log() { echo "[lamp] $*"; }
+die() { echo "[lamp] ERROR: $*" >&2; exit 1; }
+
+# SQL string literal for an arbitrary value
+sql_quote() {
+  local s=${1//\\/\\\\}
+  printf "'%s'" "${s//\'/\'\'}"
+}
+
+# --- Apache user ------------------------------------------------------------
+if [ "$PGID" != "$(id -g www-data)" ]; then
+  groupmod -o -g "$PGID" www-data
+fi
+if [ "$PUID" != "$(id -u www-data)" ]; then
+  usermod -o -u "$PUID" www-data
+fi
+chown -R www-data:www-data /var/lib/phpmyadmin
+
+# --- phpMyAdmin toggle --------------------------------------------------------
+if [ "$PHPMYADMIN" = "0" ]; then
+  a2disconf -q phpmyadmin >/dev/null
+else
+  a2enconf -q phpmyadmin >/dev/null
+fi
+
+# --- Refuse old data unless explicitly upgrading ------------------------------
+if [ -d /opt/lampp/var/mysql ] && [ -n "$(ls -A /opt/lampp/var/mysql)" ]; then
+  die "found database files at /opt/lampp/var/mysql (from tomsik68/xampp).
+  This image keeps its data in /var/lib/mysql. Dump and restore your databases instead:
+  $MIGRATION_GUIDE"
+fi
+
+bundled_version=$(mariadbd --version | grep -oE '[0-9]+\.[0-9]+' | head -n1)
+# Major.minor only: patch updates are compatible and need no guard
+needs_upgrade=0
+if [ -f "$DATADIR/mysql_upgrade_info" ]; then
+  data_version=$(grep -oE '[0-9]+\.[0-9]+' "$DATADIR/mysql_upgrade_info" | head -n1)
+  if [ "$(printf '%s\n%s\n' "$data_version" "$bundled_version" | sort -V | head -n1)" != "$bundled_version" ]; then
+    if [ "${MARIADB_AUTO_UPGRADE:-0}" != "1" ]; then
+      die "the data in $DATADIR was written by MariaDB $data_version, but this image runs $bundled_version.
+  Upgrading it in place is one-way. Back it up, then either dump and restore it, or set
+  MARIADB_AUTO_UPGRADE=1 to upgrade in place. See $MIGRATION_GUIDE"
+    fi
+    needs_upgrade=1
+  fi
+fi
+
+mkdir -p /run/mysqld
+chown mysql:mysql "$DATADIR" /run/mysqld
+
+# Runs a temporary server without networking, waits for it, then executes $1
+with_temp_server() {
+  mariadbd --user=mysql --datadir="$DATADIR" --skip-networking --socket=/run/mysqld/init.sock &
+  local pid=$!
+  for _ in $(seq 60); do
+    mariadb-admin --socket=/run/mysqld/init.sock ping >/dev/null 2>&1 && break
+    sleep 1
+  done
+  "$1"
+  mariadb-admin --socket=/run/mysqld/init.sock shutdown
+  wait "$pid"
+}
+
+first_init_sql() {
+  local pw db user upw
+  pw=$(sql_quote "$MARIADB_ROOT_PASSWORD")
+  {
+    echo "ALTER USER 'root'@'localhost' IDENTIFIED VIA unix_socket OR mysql_native_password USING PASSWORD($pw);"
+    echo "CREATE USER 'root'@'%' IDENTIFIED BY $pw;"
+    echo "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;"
+    if [ -n "${MARIADB_DATABASE:-}" ]; then
+      db=${MARIADB_DATABASE//\`/\`\`}
+      echo "CREATE DATABASE IF NOT EXISTS \`$db\`;"
+    fi
+    if [ -n "${MARIADB_USER:-}" ]; then
+      [ -n "${MARIADB_PASSWORD:-}" ] || die "MARIADB_USER is set but MARIADB_PASSWORD is empty"
+      user=$(sql_quote "$MARIADB_USER")
+      upw=$(sql_quote "$MARIADB_PASSWORD")
+      echo "CREATE USER $user@'%' IDENTIFIED BY $upw;"
+      if [ -n "${MARIADB_DATABASE:-}" ]; then
+        echo "GRANT ALL PRIVILEGES ON \`$db\`.* TO $user@'%';"
+      fi
+    fi
+    echo "FLUSH PRIVILEGES;"
+  } | mariadb --socket=/run/mysqld/init.sock
+}
+
+run_upgrade() {
+  mariadb-upgrade --socket=/run/mysqld/init.sock
+}
+
+if [ ! -d "$DATADIR/mysql" ]; then
+  log "initializing a new database in $DATADIR"
+  mariadb-install-db --user=mysql --datadir="$DATADIR" --skip-test-db >/dev/null
+  with_temp_server first_init_sql
+elif [ "$needs_upgrade" = "1" ]; then
+  log "upgrading data from MariaDB $data_version to $bundled_version (MARIADB_AUTO_UPGRADE=1)"
+  with_temp_server run_upgrade
+fi
+
+# --- Default-password warning ---------------------------------------------------
+if [ "$MARIADB_ROOT_PASSWORD" = "root" ]; then
+  cat <<'EOF'
+[lamp] ************************************************************************
+[lamp] WARNING: MariaDB root password is the default "root", and root can log in
+[lamp] from outside the container. This is a development image. Do not expose
+[lamp] port 3306 to untrusted networks. Set MARIADB_ROOT_PASSWORD on first start
+[lamp] to choose another password.
+[lamp] ************************************************************************
+EOF
+fi

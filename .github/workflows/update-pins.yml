@@ -1,0 +1,33 @@
+name: update-pins
+
+# Opens a PR when s6-overlay, phpMyAdmin or composer has a new release.
+# The build workflow smoke-tests the PR; it is auto-merged when green.
+on:
+  schedule:
+    - cron: '42 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - id: bump
+        run: echo "summary=$(scripts/update-pins.sh)" >> "$GITHUB_OUTPUT"
+      - id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: update-pins
+          commit-message: 'Bump pinned downloads: ${{ steps.bump.outputs.summary }}'
+          title: 'Bump pinned downloads'
+          body: ${{ steps.bump.outputs.summary }}
+          # a PAT, so the PR triggers the build workflow (GITHUB_TOKEN events do not)
+          token: ${{ secrets.PINS_TOKEN }}
+      - if: steps.pr.outputs.pull-request-number
+        run: gh pr merge --auto --squash "${{ steps.pr.outputs.pull-request-number }}"
+        env:
+          GH_TOKEN: ${{ secrets.PINS_TOKEN }}

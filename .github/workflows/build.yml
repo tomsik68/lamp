@@ -1,0 +1,152 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: 'PHP branches to build, as a JSON array'
+        default: '["8.4", "8.5"]'
+  workflow_call:
+    inputs:
+      versions:
+        type: string
+        default: '["8.4", "8.5"]'
+
+env:
+  IMAGE: tomsik68/lamp
+  GHCR_IMAGE: ghcr.io/tomsik68/lamp
+  # newest supported branch: gets `8` and `latest`
+  LATEST: '8.5'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ${{ fromJSON(inputs.versions || '["8.4", "8.5"]') }}
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build for smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          build-args: PHP_VERSION=${{ matrix.php }}
+          pull: true
+          load: true
+          tags: lamp:test
+          # no registry cache: apt layers must pick up Debian security updates
+
+      - name: Smoke test
+        run: tests/smoke.sh lamp:test
+
+      - name: Read PHP patch version
+        id: meta
+        run: echo "patch=$(docker run --rm --entrypoint php lamp:test -r 'echo PHP_VERSION;')" >> "$GITHUB_OUTPUT"
+
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push by digest
+        if: github.event_name != 'pull_request'
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          build-args: PHP_VERSION=${{ matrix.php }}
+          outputs: type=image,"name=${{ env.IMAGE }},${{ env.GHCR_IMAGE }}",push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/digests
+          echo "${{ steps.meta.outputs.patch }}" > /tmp/digests/patch
+          touch "/tmp/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.php }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          retention-days: 1
+
+  publish:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        php: ${{ fromJSON(inputs.versions || '["8.4", "8.5"]') }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digests-${{ matrix.php }}-*
+          merge-multiple: true
+          path: /tmp/digests
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create multi-arch tags
+        working-directory: /tmp/digests
+        env:
+          PHP: ${{ matrix.php }}
+        run: |
+          patch=$(cat patch)
+          tags=("$PHP" "$PHP-trixie" "$patch" "$patch-trixie")
+          if [ "$PHP" = "$LATEST" ]; then tags+=(8 8-trixie latest); fi
+          for repo in "$IMAGE" "$GHCR_IMAGE"; do
+            args=()
+            for t in "${tags[@]}"; do args+=(-t "$repo:$t"); done
+            sources=()
+            for d in $(ls | grep -v '^patch$'); do sources+=("$repo@sha256:$d"); done
+            docker buildx imagetools create "${args[@]}" "${sources[@]}"
+          done
+
+  hub-description:
+    if: github.event_name == 'push'
+    needs: publish
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: tomsik68/lamp
+          short-description: Apache, PHP and MariaDB with phpMyAdmin in one container. One docker run.
+          readme-filepath: README.md
