@@ -16,8 +16,10 @@ ARG COMPOSER_VERSION=2.10.3
 ARG COMPOSER_SHA256=7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6
 
 ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # MariaDB from Debian, plus build deps for the PHP extensions
+# hadolint ignore=SC2086
 RUN set -eux; \
   buildDeps="libfreetype-dev libjpeg62-turbo-dev libpng-dev libwebp-dev \
       libicu-dev libzip-dev libxml2-dev libmagickwand-dev libmemcached-dev zlib1g-dev"; \
@@ -100,6 +102,8 @@ ENV MARIADB_ROOT_PASSWORD=root \
 VOLUME ["/var/lib/mysql"]
 EXPOSE 80 3306
 
+# the check needs shell operators
+# hadolint ignore=DL3025
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
   CMD curl -sS -o /dev/null http://127.0.0.1/ && mariadb-admin --protocol=socket ping >/dev/null || exit 1
 

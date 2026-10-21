@@ -1,0 +1,49 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
+
+  hadolint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # settings in .hadolint.yaml
+      - uses: docker://hadolint/hadolint:v2.15.1
+        with:
+          args: hadolint Dockerfile
+
+  links:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # settings in lychee.toml
+      - uses: docker://lycheeverse/lychee:0.24.2
+        with:
+          args: --no-progress README.md SECURITY.md docs
+
+  filenames:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/check-filenames.sh
+
+  no-binaries:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # allowed exceptions in .binary-allowlist
+      - run: scripts/check-no-binaries.sh

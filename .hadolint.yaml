@@ -1,0 +1,5 @@
+ignored:
+  # Debian packages are deliberately unpinned: each rebuild picks up their security fixes
+  - DL3008
+  # MARIADB_ROOT_PASSWORD=root is the documented dev default (see docs/configuration.md)
+  - DL3064

@@ -139,7 +139,7 @@ jobs:
             args=()
             for t in "${tags[@]}"; do args+=(-t "$repo:$t"); done
             sources=()
-            for d in $(ls | grep -v '^patch$'); do sources+=("$repo@sha256:$d"); done
+            for d in *; do [ "$d" = patch ] || sources+=("$repo@sha256:$d"); done
             docker buildx imagetools create "${args[@]}" "${sources[@]}"
           done
 
