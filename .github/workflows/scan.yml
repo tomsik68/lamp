@@ -1,0 +1,33 @@
+name: scan
+
+on:
+  workflow_run:
+    workflows: [build]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Until T0 only `X.Y-beta` tags exist. Set to '' in the T0 commit.
+  TAG_SUFFIX: '-beta'
+
+jobs:
+  trivy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4', '8.5']
+    steps:
+      # Fails on HIGH/CRITICAL findings that have a fix available: a rebuild or a pin bump is due
+      - uses: docker://aquasec/trivy:0.76.1
+        with:
+          args: >-
+            image --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln --exit-code 1
+            docker.io/tomsik68/lamp:${{ matrix.php }}${{ env.TAG_SUFFIX }}

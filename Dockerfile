@@ -74,6 +74,17 @@ RUN set -eu; \
   echo "$COMPOSER_SHA256  /usr/local/bin/composer" | sha256sum -c -; \
   chmod +x /usr/local/bin/composer
 
+# phpMyAdmin's latest release vendors twig and symfony/cache with known CVEs;
+# update just those, within their majors. Its forked VCS repo needs git and is
+# only used by packages we don't touch, so drop it first.
+RUN set -eu; \
+  export COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_HOME=/tmp/composer; \
+  composer -d /usr/share/phpmyadmin config --unset repositories; \
+  composer -d /usr/share/phpmyadmin update --no-dev --no-interaction --no-plugins --no-scripts --no-progress --no-audit \
+    --with-dependencies --with 'symfony/cache:^5.4.52' --with 'twig/twig:^3.27' \
+    twig/twig symfony/cache; \
+  rm -rf /tmp/composer
+
 COPY rootfs/ /
 
 RUN set -eu; \
