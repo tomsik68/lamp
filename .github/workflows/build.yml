@@ -20,6 +20,8 @@ env:
   GHCR_IMAGE: ghcr.io/tomsik68/lamp
   # newest supported branch: gets `8` and `latest`
   LATEST: '8.5'
+  # Until T0, publish only `X.Y-beta` tags. Set to false in the T0 commit.
+  BETA: 'true'
 
 permissions:
   contents: read
@@ -127,8 +129,12 @@ jobs:
           PHP: ${{ matrix.php }}
         run: |
           patch=$(cat patch)
-          tags=("$PHP" "$PHP-trixie" "$patch" "$patch-trixie")
-          if [ "$PHP" = "$LATEST" ]; then tags+=(8 8-trixie latest); fi
+          if [ "$BETA" = true ]; then
+            tags=("$PHP-beta")
+          else
+            tags=("$PHP" "$PHP-trixie" "$patch" "$patch-trixie")
+            if [ "$PHP" = "$LATEST" ]; then tags+=(8 8-trixie latest); fi
+          fi
           for repo in "$IMAGE" "$GHCR_IMAGE"; do
             args=()
             for t in "${tags[@]}"; do args+=(-t "$repo:$t"); done
