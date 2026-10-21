@@ -23,6 +23,8 @@ jobs:
           for php in 8.4 8.5; do
             base="php:$php-apache-trixie"
             ours="tomsik68/lamp:$php"
+            # before T0 only the beta tag exists
+            docker buildx imagetools inspect "$ours" >/dev/null 2>&1 || ours="$ours-beta"
             # the base moved if its top layer is no longer one of ours
             base_top=$(docker buildx imagetools inspect "$base" --format '{{json .Image}}' \
               | jq -r '."linux/amd64".rootfs.diff_ids[-1]')
