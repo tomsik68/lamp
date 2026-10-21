@@ -1,6 +1,6 @@
 # tomsik68/lamp
 
-Apache, PHP and MariaDB, with phpMyAdmin, in **one container**. Start it with one `docker run`, with no compose file needed.
+Apache, PHP and MariaDB, with Adminer, in **one container**. Start it with one `docker run`, with no compose file needed.
 
 This is a **development** image. It is the successor to [`tomsik68/xampp`](https://hub.docker.com/r/tomsik68/xampp). Coming from there? Read the [migration guide](https://github.com/tomsik68/lamp/blob/main/docs/migrating-from-xampp.md).
 
@@ -15,7 +15,7 @@ docker run -d --name lamp \
 ```
 
 - Your site: <http://localhost/>
-- phpMyAdmin: <http://localhost/phpmyadmin/> (user `root`, password `root`)
+- Adminer: <http://localhost/adminer/> (user `root`, password `root`)
 - MariaDB: `localhost:3306` from the host, or `localhost` from PHP inside the container.
 
 > [!WARNING]
@@ -24,7 +24,7 @@ docker run -d --name lamp \
 ## What's inside
 
 - The official [`php:X.Y-apache`](https://hub.docker.com/_/php) image on Debian trixie, with `mod_rewrite` and `AllowOverride All`.
-- MariaDB 11.8 from Debian, and phpMyAdmin at `/phpmyadmin`.
+- MariaDB 11.8 from Debian, and [Adminer](https://www.adminer.org/) at `/adminer` (`/phpmyadmin` redirects there).
 - PHP extensions: mysqli, pdo_mysql, gd, intl, zip, bcmath, exif, opcache, imagick, soap, redis, memcached, plus xdebug (installed but off by default).
 - `composer`.
 - No SSH. Use `docker exec -it lamp bash` and `docker cp`.

@@ -43,7 +43,7 @@ Change your `docker run` command:
 
 - **Ports:** 80 and 3306 are unchanged. Remove the `-p …:22` mapping, because there's no SSH.
 - **Web root:** mount your code at `/var/www/html`. Mounting at `/www` still works because it's a symlink, but `/var/www/html` is the real path.
-- **URLs:** pages are served at `http://localhost/` and also at `http://localhost/www/`, as before. phpMyAdmin is still at `/phpmyadmin/`.
+- **URLs:** pages are served at `http://localhost/` and also at `http://localhost/www/`, as before. phpMyAdmin is replaced by Adminer at `/adminer/`, and `/phpmyadmin/` redirects there.
 - **Data:** add a volume for `/var/lib/mysql`, or your databases disappear with the container.
 
 ## 4. Restore
@@ -67,7 +67,8 @@ Your old container and its data are untouched, so you can roll back by starting 
 
 - **The root password is now `root`.** XAMPP's root had an empty password, so update any connection strings that use `root` with no password. You can choose another password with `MARIADB_ROOT_PASSWORD` on the first start.
 - **No SSH.** Use `docker exec -it NEW_CONTAINER bash` for a shell, and `docker cp` to copy files.
-- **No XAMPP dashboard.** The `/dashboard` page is gone. phpMyAdmin is at `/phpmyadmin/`.
+- **No XAMPP dashboard.** The `/dashboard` page is gone.
+- **Where is phpMyAdmin now?** It is replaced by [Adminer](https://www.adminer.org/) at `/adminer/`. Old `/phpmyadmin/` bookmarks redirect there. Log in as `root` / `root`.
 - **Config files moved.**
 
   | XAMPP | lamp |

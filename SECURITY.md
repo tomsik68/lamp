@@ -10,4 +10,4 @@ Please report vulnerabilities privately through GitHub's [private vulnerability 
 
 ## How fixes ship
 
-Fixes ship as image rebuilds. Images are rebuilt automatically when the upstream `php` base image, Debian packages, s6-overlay or phpMyAdmin change, so pulling the tag again picks the fix up.
+Fixes ship as image rebuilds. Images are rebuilt automatically when the upstream `php` base image, Debian packages, s6-overlay or Adminer change, so pulling the tag again picks the fix up.

@@ -22,13 +22,12 @@ fi
 if [ "$PUID" != "$(id -u www-data)" ]; then
   usermod -o -u "$PUID" www-data
 fi
-chown -R www-data:www-data /var/lib/phpmyadmin
 
-# --- phpMyAdmin toggle --------------------------------------------------------
-if [ "$PHPMYADMIN" = "0" ]; then
-  a2disconf -q phpmyadmin >/dev/null
+# --- Adminer toggle -----------------------------------------------------------
+if [ "$ADMINER" = "0" ]; then
+  a2disconf -q adminer >/dev/null
 else
-  a2enconf -q phpmyadmin >/dev/null
+  a2enconf -q adminer >/dev/null
 fi
 
 # --- Refuse old data unless explicitly upgrading ------------------------------

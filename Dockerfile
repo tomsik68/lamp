@@ -9,8 +9,8 @@ ARG S6_OVERLAY_NOARCH_SHA256=5379750ed30a84bbd2e2dd74847ba6b5bd29cd0b2e3ea2ec580
 ARG S6_OVERLAY_X86_64_SHA256=e6befcc96a437a3831386ecfc51808c5d3e939dc5fe3c02ae9284599e8aa2408
 ARG S6_OVERLAY_AARCH64_SHA256=b17f17a82e7a515c682a91edaf2ffdabb73f891981b6c1fd712115693a2f8b4c
 
-ARG PHPMYADMIN_VERSION=5.2.3
-ARG PHPMYADMIN_SHA256=57881348297c4412f86c410547cf76b4d8a236574dd2c6b7d6a2beebe7fc44e3
+ARG ADMINER_VERSION=6.1.2
+ARG ADMINER_SHA256=30d600b5d8750600b7cf7d8e4652f27d3bcd23ca6c9e1e6399a9b4a274fd7c0e
 
 ARG COMPOSER_VERSION=2.10.3
 ARG COMPOSER_SHA256=7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6
@@ -58,32 +58,17 @@ RUN set -eu; \
   tar -C / -Jxpf /tmp/arch.tar.xz; \
   rm /tmp/*.tar.xz
 
-# phpMyAdmin
+# Adminer, the MySQL-only single-file build
 RUN set -eu; \
-  curl -fsSLo /tmp/pma.tar.xz "https://files.phpmyadmin.net/phpMyAdmin/${PHPMYADMIN_VERSION}/phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages.tar.xz"; \
-  echo "$PHPMYADMIN_SHA256  /tmp/pma.tar.xz" | sha256sum -c -; \
-  mkdir -p /usr/share/phpmyadmin; \
-  tar -C /usr/share/phpmyadmin --strip-components=1 -Jxf /tmp/pma.tar.xz; \
-  rm -rf /tmp/pma.tar.xz /usr/share/phpmyadmin/setup; \
-  mkdir -p /var/lib/phpmyadmin/tmp; \
-  chown -R www-data:www-data /var/lib/phpmyadmin
+  mkdir -p /usr/share/adminer; \
+  curl -fsSLo /usr/share/adminer/index.php "https://github.com/vrana/adminer/releases/download/v${ADMINER_VERSION}/adminer-${ADMINER_VERSION}-mysql.php"; \
+  echo "$ADMINER_SHA256  /usr/share/adminer/index.php" | sha256sum -c -
 
 # composer
 RUN set -eu; \
   curl -fsSLo /usr/local/bin/composer "https://getcomposer.org/download/${COMPOSER_VERSION}/composer.phar"; \
   echo "$COMPOSER_SHA256  /usr/local/bin/composer" | sha256sum -c -; \
   chmod +x /usr/local/bin/composer
-
-# phpMyAdmin's latest release vendors twig and symfony/cache with known CVEs;
-# update just those, within their majors. Its forked VCS repo needs git and is
-# only used by packages we don't touch, so drop it first.
-RUN set -eu; \
-  export COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_HOME=/tmp/composer; \
-  composer -d /usr/share/phpmyadmin config --unset repositories; \
-  composer -d /usr/share/phpmyadmin update --no-dev --no-interaction --no-plugins --no-scripts --no-progress --no-audit \
-    --with-dependencies --with 'symfony/cache:^5.4.52' --with 'twig/twig:^3.27' \
-    twig/twig symfony/cache; \
-  rm -rf /tmp/composer
 
 COPY rootfs/ /
 
@@ -102,7 +87,7 @@ RUN set -eu; \
   chown mysql:mysql /var/lib/mysql /run/mysqld
 
 ENV MARIADB_ROOT_PASSWORD=root \
-    PHPMYADMIN=1 \
+    ADMINER=1 \
     XDEBUG_MODE=off \
     PUID=33 \
     PGID=33 \

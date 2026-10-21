@@ -154,5 +154,5 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: tomsik68/lamp
-          short-description: Apache, PHP and MariaDB with phpMyAdmin in one container. One docker run.
+          short-description: Apache, PHP and MariaDB with Adminer in one container. One docker run.
           readme-filepath: README.md

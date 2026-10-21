@@ -46,6 +46,19 @@ RUN set -eu; \
 
 PHP then connects to `127.0.0.1:6379` for Valkey and `127.0.0.1:11211` for memcached.
 
+## Adminer plugins
+
+Adminer loads every `*.php` file in `/usr/share/adminer/adminer-plugins/`. Copy in a plugin from the [Adminer plugins page](https://www.adminer.org/plugins/). Use the plugin from the same release as the bundled Adminer, whose version is shown at the top of `/adminer/`:
+
+```dockerfile
+FROM tomsik68/lamp:8.4
+
+ADD https://raw.githubusercontent.com/vrana/adminer/v6.1.2/plugins/dump-json.php \
+    /usr/share/adminer/adminer-plugins/
+```
+
+A plugin whose constructor takes arguments must be configured in `/usr/share/adminer/adminer-plugins.php` instead. See [how to use plugins](https://www.adminer.org/plugins/#use).
+
 ## Your own startup steps
 
 Add an s6 oneshot that depends on `init-lamp`, or a longrun that depends on `mariadb`, the same way. See the [s6-overlay docs](https://github.com/just-containers/s6-overlay#writing-a-service-script).

@@ -1,7 +1,8 @@
 name: update-pins
 
-# Opens a PR when s6-overlay, phpMyAdmin or composer has a new release.
-# The build workflow smoke-tests the PR; it is auto-merged when green.
+# Opens a PR when s6-overlay, Adminer or composer has a new release.
+# The build workflow smoke-tests the PR; it is auto-merged when green, unless
+# it bumps Adminer, which a maintainer always reviews.
 on:
   schedule:
     - cron: '42 3 * * *'
@@ -17,7 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: bump
-        run: echo "summary=$(scripts/update-pins.sh)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "summary=$(scripts/update-pins.sh)" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -G '^ARG ADMINER_' Dockerfile; then
+            echo "adminer=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "adminer=true" >> "$GITHUB_OUTPUT"
+          fi
       - id: pr
         uses: peter-evans/create-pull-request@v7
         with:
@@ -27,7 +34,7 @@ jobs:
           body: ${{ steps.bump.outputs.summary }}
           # a PAT, so the PR triggers the build workflow (GITHUB_TOKEN events do not)
           token: ${{ secrets.PINS_TOKEN }}
-      - if: steps.pr.outputs.pull-request-number
+      - if: steps.pr.outputs.pull-request-number && steps.bump.outputs.adminer == 'false'
         run: gh pr merge --auto --squash "${{ steps.pr.outputs.pull-request-number }}"
         env:
           GH_TOKEN: ${{ secrets.PINS_TOKEN }}

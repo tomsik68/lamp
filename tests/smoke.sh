@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Smoke test: container starts, Apache serves PHP, MariaDB accepts
-# connections (TCP and the localhost socket), phpMyAdmin logs in. Usage: tests/smoke.sh IMAGE
+# connections (TCP and the localhost socket), Adminer logs in. Usage: tests/smoke.sh IMAGE
 set -euo pipefail
 
 IMAGE=${1:?usage: $0 IMAGE}
@@ -48,13 +48,20 @@ echo "ok   /www/ alias"
 curl -fsS "http://127.0.0.1:$port/socket.php" | grep 'socket ok' >/dev/null || fail "PHP could not connect to localhost over the socket"
 echo "ok   localhost socket (mysqli, PDO)"
 
-pma="http://127.0.0.1:$port/phpmyadmin/index.php"
-token=$(curl -fsS -c "$jar" -b "$jar" "$pma" | grep -oP 'name="token" value="\K[^"]+' | head -n1) || fail "phpMyAdmin did not load"
-curl -fsS -c "$jar" -b "$jar" -o /dev/null --data-urlencode "token=$token" \
-  --data 'pma_username=root&pma_password=root&server=1' "$pma?route=/" || fail "phpMyAdmin login request"
-curl -fsS -c "$jar" -b "$jar" "$pma?route=/server/databases" | grep information_schema >/dev/null \
-  || fail "phpMyAdmin login as root/root did not reach the database list"
-echo "ok   phpMyAdmin login"
+adminer="http://127.0.0.1:$port/adminer/"
+form=$(curl -fsS -c "$jar" -b "$jar" "$adminer") || fail "Adminer did not load"
+echo "$form" | grep 'name="auth\[username\]"[^>]*value="root"' >/dev/null || fail "Adminer login form lacks the root default"
+token=$(echo "$form" | grep -oP "name='token' value='\K[^']+" | head -n1)
+curl -fsS -c "$jar" -b "$jar" -L -o /dev/null --data-urlencode "token=$token" \
+  --data 'auth[driver]=server&auth[server]=&auth[username]=root&auth[password]=root&auth[db]=' "$adminer" \
+  || fail "Adminer login request"
+curl -fsS -c "$jar" -b "$jar" "$adminer?username=root" | grep information_schema >/dev/null \
+  || fail "Adminer login as root/root did not reach the database list"
+echo "ok   Adminer login"
+
+redirect=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "http://127.0.0.1:$port/phpmyadmin/index.php")
+[ "$redirect" = "302 http://127.0.0.1:$port/adminer/" ] || fail "/phpmyadmin/ redirect: $redirect"
+echo "ok   /phpmyadmin/ redirects to /adminer/"
 
 $DOCKER exec "$name" mariadb -h 127.0.0.1 -uroot -proot -e 'SELECT 1' >/dev/null || fail "root over TCP"
 echo "ok   root/root over TCP"

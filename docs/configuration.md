@@ -8,11 +8,11 @@
 | `MARIADB_DATABASE` | — | first start | Creates this database. |
 | `MARIADB_USER`, `MARIADB_PASSWORD` | — | first start | Creates this user, who can connect from anywhere. If `MARIADB_DATABASE` is set, the user gets all privileges on it. |
 | `MARIADB_AUTO_UPGRADE` | `0` | every start | Set it to `1` to upgrade data written by an older MariaDB in place. Back up first. |
-| `PHPMYADMIN` | `1` | every start | Set it to `0` to disable `/phpmyadmin`. |
+| `ADMINER` | `1` | every start | Set it to `0` to disable `/adminer` and the `/phpmyadmin` redirect. |
 | `XDEBUG_MODE` | `off` | every start | The [xdebug mode](https://xdebug.org/docs/all_settings#mode), for example `debug` or `debug,develop`. |
 | `PUID`, `PGID` | `33` | every start | The uid and gid Apache runs as. Set them to your own (`-e PUID=$(id -u) -e PGID=$(id -g)`) so files PHP writes into a bind mount belong to you. |
 
-A "first start" variable takes effect only when `/var/lib/mysql` is empty. After that, change passwords and users with SQL, for example in phpMyAdmin.
+A "first start" variable takes effect only when `/var/lib/mysql` is empty. After that, change passwords and users with SQL, for example in Adminer.
 
 The startup log warns while `MARIADB_ROOT_PASSWORD` is still `root`. The check reads only the variable. If you changed the password with SQL, the warning still shows until you also set the variable.
 
