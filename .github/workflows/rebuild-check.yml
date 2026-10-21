@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: '17 4 * * *'
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Rebuild every branch, even if nothing changed'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,6 +26,9 @@ jobs:
         run: |
           stale=()
           for php in 8.4 8.5; do
+            if [ "${{ inputs.force }}" = true ]; then
+              stale+=("$php"); continue
+            fi
             base="php:$php-apache-trixie"
             ours="tomsik68/lamp:$php"
             # before T0 only the beta tag exists
