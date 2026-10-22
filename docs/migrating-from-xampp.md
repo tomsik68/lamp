@@ -81,11 +81,7 @@ Your old container and its data are untouched, so you can roll back by starting 
 
   See [configuration](configuration.md).
 - **Missing a PHP extension?** See [extending the image](extending.md).
-- **Mounting old data files doesn't work.** If you mount XAMPP's `/opt/lampp/var/mysql` directory, the container refuses to start. Use dump and restore instead.
-
-### Advanced: upgrading data files in place
-
-If dumping isn't practical, you can mount a **copy** of the old data directory at `/var/lib/mysql` and set `MARIADB_AUTO_UPGRADE=1`. MariaDB then upgrades the files in place. This is one-way, so the old image can't read them afterwards. Upgrades from XAMPP's MariaDB 10.4 straight to 11.8 are less tested, so if it fails, go through a `mariadb:10.11` container first. Dump and restore remains the recommended path.
+- **Mounting old data files doesn't work.** If you mount XAMPP's `/opt/lampp/var/mysql` directory, the container refuses to start. Mounting a copy at `/var/lib/mysql` doesn't work either, even with `MARIADB_AUTO_UPGRADE=1`. Use dump and restore instead.
 
 ## Upgrading your PHP code
 
