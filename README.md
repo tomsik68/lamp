@@ -1,5 +1,10 @@
 # tomsik68/lamp
 
+[![Build](https://img.shields.io/github/actions/workflow/status/tomsik68/lamp/build.yml?branch=main&label=build)](https://github.com/tomsik68/lamp/actions/workflows/build.yml)
+[![Docker Hub pulls](https://img.shields.io/docker/pulls/tomsik68/lamp)](https://hub.docker.com/r/tomsik68/lamp)
+[![Image size](https://img.shields.io/docker/image-size/tomsik68/lamp/latest)](https://hub.docker.com/r/tomsik68/lamp/tags)
+[![License: MIT](https://img.shields.io/github/license/tomsik68/lamp)](https://github.com/tomsik68/lamp/blob/main/LICENSE)
+
 Apache, PHP and MariaDB, with Adminer, in **one container**. Start it with one `docker run`, with no compose file needed.
 
 This is a **development** image. It is the successor to [`tomsik68/xampp`](https://hub.docker.com/r/tomsik68/xampp). Coming from there? Read the [migration guide](https://github.com/tomsik68/lamp/blob/main/docs/migrating-from-xampp.md).
