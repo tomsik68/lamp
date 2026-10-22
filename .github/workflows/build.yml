@@ -20,8 +20,7 @@ env:
   GHCR_IMAGE: ghcr.io/tomsik68/lamp
   # newest supported branch: gets `8` and `latest`
   LATEST: '8.5'
-  # Until T0, publish only `X.Y-beta` tags. Set to false in the T0 commit.
-  BETA: 'true'
+  BETA: 'false'
 
 permissions:
   contents: read

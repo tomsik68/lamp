@@ -1,6 +1,3 @@
 # The README's examples point at a container running on localhost
 exclude_loopback = true
-exclude = [
-  # The repo is private until T0, so its own URLs return 404. Remove on T0 day.
-  '^https://github\.com/tomsik68/lamp/',
-]
+exclude = []

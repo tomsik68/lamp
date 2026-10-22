@@ -13,8 +13,7 @@ permissions:
   contents: read
 
 env:
-  # Until T0 only `X.Y-beta` tags exist. Set to '' in the T0 commit.
-  TAG_SUFFIX: '-beta'
+  TAG_SUFFIX: ''
 
 jobs:
   trivy:
