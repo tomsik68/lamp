@@ -14,7 +14,7 @@
 
 A "first start" variable takes effect only when `/var/lib/mysql` is empty. After that, change passwords and users with SQL, for example in Adminer.
 
-The startup log warns while `MARIADB_ROOT_PASSWORD` is still `root`. The check reads only the variable. If you changed the password with SQL, the warning still shows until you also set the variable.
+The startup log warns while a `root` account that can log in from outside the container still has the password `root`. The check reads the accounts in the database, so it also sees a password you changed with SQL.
 
 ### Xdebug
 

@@ -104,15 +104,3 @@ elif [ "$needs_upgrade" = "1" ]; then
   log "upgrading data from MariaDB $data_version to $bundled_version (MARIADB_AUTO_UPGRADE=1)"
   with_temp_server run_upgrade
 fi
-
-# --- Default-password warning ---------------------------------------------------
-if [ "$MARIADB_ROOT_PASSWORD" = "root" ]; then
-  cat <<'EOF'
-[lamp] ************************************************************************
-[lamp] WARNING: MariaDB root password is the default "root", and root can log in
-[lamp] from outside the container. This is a development image. Do not expose
-[lamp] port 3306 to untrusted networks. Set MARIADB_ROOT_PASSWORD on first start
-[lamp] to choose another password.
-[lamp] ************************************************************************
-EOF
-fi

@@ -66,6 +66,23 @@ echo "ok   /phpmyadmin/ redirects to /adminer/"
 $DOCKER exec "$name" mariadb -h 127.0.0.1 -uroot -proot -e 'SELECT 1' >/dev/null || fail "root over TCP"
 echo "ok   root/root over TCP"
 
+# Waits until the default-password check has run $1 times
+wait_password_checks() {
+  for _ in $(seq 60); do
+    [ "$($DOCKER logs "$name" 2>&1 | grep -c 'default-password check done')" -ge "$1" ] && return
+    sleep 1
+  done
+  fail "default-password check did not run"
+}
+wait_password_checks 1
+$DOCKER logs "$name" 2>&1 | grep 'WARNING: MariaDB root password is the default' >/dev/null || fail "no default-password warning"
+$DOCKER exec "$name" mariadb -e "ALTER USER 'root'@'%' IDENTIFIED BY 'changed'" || fail "change root password"
+$DOCKER restart "$name" >/dev/null
+wait_password_checks 2
+[ "$($DOCKER logs "$name" 2>&1 | grep -c 'WARNING: MariaDB root password is the default')" = 1 ] \
+  || fail "default-password warning still shows after the password changed"
+echo "ok   default-password warning follows the real password"
+
 for ext in mysqli pdo_mysql gd intl zip bcmath exif 'Zend OPcache' imagick soap redis memcached xdebug; do
   $DOCKER exec "$name" php -m | grep -x "$ext" >/dev/null || fail "missing PHP extension $ext"
 done
