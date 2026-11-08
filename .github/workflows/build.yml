@@ -21,6 +21,8 @@ env:
   # newest supported branch: gets `8` and `latest`
   LATEST: '8.5'
   BETA: 'false'
+  # build-push-action uploads a build record artifact per build; keep them briefly
+  DOCKER_BUILD_RECORD_RETENTION_DAYS: 7
 
 permissions:
   contents: read
